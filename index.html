@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Physics Examinations — Dashboard</title>
+<style>
+  :root {
+    --bg: #f7f6f2;
+    --ink: #1a1a1a;
+    --mid: #666;
+    --line: #d0cfc9;
+    --accent: #c0392b;
+    --green: #27ae60;
+    --warn-bg: #fff8e1;
+    --warn-bdr: #f9a825;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 2.5rem 1rem;
+  }
+  .wrap { max-width: 700px; margin: 0 auto; }
+
+  /* header */
+  .top-label { font-size: 0.7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--mid); margin-bottom: 0.4rem; }
+  h1 { font-size: 1.3rem; border-bottom: 2px solid var(--ink); padding-bottom: 0.55rem; margin-bottom: 0.5rem; }
+  .tagline { font-size: 0.8rem; color: var(--mid); margin-bottom: 2rem; }
+
+  /* activity list */
+  .section-label {
+    font-size: 0.68rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--mid); margin-bottom: 0.75rem; border-bottom: 1px solid var(--line); padding-bottom: 0.3rem;
+  }
+  .activity-list { display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 2rem; }
+
+  .activity-row {
+    display: flex; align-items: center; gap: 0.75rem;
+    background: #fff; border: 1px solid var(--line); padding: 0.75rem 0.9rem;
+  }
+  .activity-row .badge {
+    flex-shrink: 0; font-size: 0.65rem; font-weight: bold; letter-spacing: .05em;
+    padding: 0.2rem 0.5rem; border: 1px solid; text-transform: uppercase;
+  }
+  .badge.done   { color: var(--green); border-color: var(--green); background: #eafaf1; }
+  .badge.pending { color: var(--mid);  border-color: var(--line);  background: var(--bg); }
+  .badge.term   { color: var(--accent); border-color: var(--accent); background: #fdecea; }
+
+  .activity-info { flex: 1; }
+  .activity-info .a-title { font-size: 0.88rem; font-weight: bold; margin-bottom: 0.15rem; }
+  .activity-info .a-meta  { font-size: 0.72rem; color: var(--mid); }
+
+  .activity-score {
+    font-size: 1.1rem; font-weight: bold; text-align: right; flex-shrink: 0; min-width: 3rem;
+  }
+  .activity-score.high { color: var(--green); }
+  .activity-score.mid  { color: #e67e22; }
+  .activity-score.low  { color: var(--accent); }
+  .activity-score.none { color: var(--line); font-size: 0.8rem; font-weight: normal; }
+
+  .open-btn {
+    flex-shrink: 0;
+    padding: 0.38rem 0.85rem;
+    background: var(--ink); color: var(--bg);
+    border: none; font-family: inherit; font-size: 0.78rem;
+    letter-spacing: .05em; cursor: pointer; text-decoration: none;
+    display: inline-block; transition: background .15s;
+  }
+  .open-btn:hover { background: #444; }
+  .open-btn.retake-disabled {
+    background: var(--bg); color: var(--mid); border: 1px solid var(--line); cursor: default;
+  }
+
+  /* summary button */
+  .summary-wrap { text-align: center; margin-bottom: 2rem; }
+  .summary-btn {
+    padding: 0.65rem 2rem; background: var(--ink); color: var(--bg);
+    border: none; font-family: inherit; font-size: 0.9rem;
+    letter-spacing: .06em; cursor: pointer; transition: background .15s;
+  }
+  .summary-btn:hover { background: #333; }
+
+  /* overlay */
+  #overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55); z-index: 100;
+    align-items: center; justify-content: center; padding: 1.5rem;
+  }
+  #overlay.open { display: flex; }
+
+  #summary-panel {
+    background: var(--bg); width: 100%; max-width: 640px;
+    max-height: 90vh; overflow-y: auto;
+    padding: 2rem; position: relative;
+  }
+
+  #summary-panel .close-btn {
+    position: absolute; top: 1rem; right: 1rem;
+    background: none; border: none; font-family: inherit;
+    font-size: 1rem; cursor: pointer; color: var(--mid);
+  }
+  #summary-panel .close-btn:hover { color: var(--ink); }
+
+  #summary-panel h2 { font-size: 1.1rem; border-bottom: 2px solid var(--ink); padding-bottom: 0.5rem; margin-bottom: 1.2rem; }
+
+  /* screenshot notice */
+  .screenshot-notice {
+    background: var(--warn-bg); border: 1px solid var(--warn-bdr);
+    padding: 0.7rem 0.9rem; font-size: 0.8rem; line-height: 1.6;
+    margin-bottom: 1.4rem; text-align: center;
+  }
+  .screenshot-notice strong { display: block; margin-bottom: 0.2rem; font-size: 0.85rem; }
+
+  /* summary table */
+  #summary-panel table { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin-bottom: 1.2rem; }
+  #summary-panel th {
+    text-align: left; font-size: 0.65rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--mid);
+    padding: 0.3rem 0.5rem; border-bottom: 2px solid var(--ink);
+  }
+  #summary-panel td { padding: 0.5rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  #summary-panel tr:last-child td { border-bottom: none; }
+  #summary-panel tbody tr:hover { background: #eeede9; }
+
+  .s-score { font-weight: bold; }
+  .s-score.high { color: var(--green); }
+  .s-score.mid  { color: #e67e22; }
+  .s-score.low  { color: var(--accent); }
+
+  .s-tag {
+    font-size: 0.65rem; font-weight: bold; padding: 0.15rem 0.4rem;
+    border: 1px solid; letter-spacing: .04em; text-transform: uppercase;
+  }
+  .s-tag.done { color: var(--green); border-color: var(--green); }
+  .s-tag.term { color: var(--accent); border-color: var(--accent); }
+
+  /* totals row */
+  .total-row td { font-weight: bold; border-top: 2px solid var(--ink); border-bottom: none; padding-top: 0.6rem; }
+
+  /* empty */
+  .empty-msg { text-align: center; color: var(--mid); font-size: 0.85rem; padding: 2rem 0; }
+
+  /* print / screenshot area id */
+  #printable { }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="top-label">Physics · Examination Portal</p>
+  <h1>Activity Dashboard</h1>
+  <p class="tagline">Select an examination to begin. Each test can only be taken once.</p>
+
+  <p class="section-label">Examinations</p>
+  <div class="activity-list" id="activity-list"></div>
+
+  <div class="summary-wrap">
+    <button class="summary-btn" onclick="openSummary()">View Score Summary</button>
+  </div>
+
+</div>
+
+<!-- SUMMARY OVERLAY -->
+<div id="overlay">
+  <div id="summary-panel">
+    <button class="close-btn" onclick="closeSummary()">✕ close</button>
+    <h2>Score Summary</h2>
+    <div class="screenshot-notice">
+      <strong>📸 Please take a screenshot of this summary.</strong>
+      Press <kbd>Windows + Shift + S</kbd> (Windows) &nbsp;·&nbsp; <kbd>Cmd + Shift + 4</kbd> (Mac)<br>
+      to capture and save your results before closing.
+    </div>
+    <div id="printable">
+      <table id="summary-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Examination</th>
+            <th>Name</th>
+            <th>Score</th>
+            <th>Time</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="summary-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const ACTIVITIES = [
+  {
+    title: 'Thermal Equilibrium',
+    meta:  '10 questions · 5 min each · 5 pts/q scaled to 100',
+    file:  'thermal_equilibrium.html',
+    lock:  'quiz_thermal_equilibrium_record'
+  },
+  {
+    title: "Work & Internal Energy",
+    meta:  '5 questions · 3 min each · 20 pts/q',
+    file:  'work_and_internal_energy.html',
+    lock:  'quiz_work_internal_energy_done'
+  },
+  {
+    title: 'Thermal Conductivity & Heat Engines',
+    meta:  '5 questions · 5 min each · 20 pts/q',
+    file:  'thermal_conductivity_heat_engines.html',
+    lock:  'quiz_conductivity_heatengines_done'
+  },
+  {
+    title: "Current, Resistance & Ohm's Law",
+    meta:  '5 questions · 5 min each · 20 pts/q',
+    file:  'current_resistance_ohms_law.html',
+    lock:  'quiz_current_resistance_ohms_done'
+  },
+  {
+    title: "Coulomb's Law & Potential Difference",
+    meta:  '5 questions · 5 min each · 20 pts/q',
+    file:  'coulombs_law_potential_difference.html',
+    lock:  'quiz_coulombs_potential_done'
+  }
+];
+
+/* ── helpers ── */
+function getRecord(lockKey) {
+  try { return JSON.parse(localStorage.getItem(lockKey)); } catch(e) { return null; }
+}
+function scoreClass(s) {
+  if (s === null) return 'none';
+  if (s >= 80) return 'high';
+  if (s >= 50) return 'mid';
+  return 'low';
+}
+
+/* ── render activity list ── */
+function renderActivities() {
+  const list = document.getElementById('activity-list');
+  list.innerHTML = '';
+
+  ACTIVITIES.forEach((act, i) => {
+    const rec  = getRecord(act.lock);
+    const done = !!rec;
+    const term = done && rec.terminated;
+    const score = done ? rec.score : null;
+
+    const row = document.createElement('div');
+    row.className = 'activity-row';
+
+    // badge
+    const badge = document.createElement('span');
+    badge.className = `badge ${term ? 'term' : done ? 'done' : 'pending'}`;
+    badge.textContent = term ? 'Terminated' : done ? 'Complete' : 'Pending';
+    row.appendChild(badge);
+
+    // info
+    const info = document.createElement('div');
+    info.className = 'activity-info';
+    info.innerHTML = `<div class="a-title">${i+1}. ${act.title}</div><div class="a-meta">${act.meta}</div>`;
+    row.appendChild(info);
+
+    // score
+    const sc = document.createElement('div');
+    sc.className = `activity-score ${scoreClass(score)}`;
+    sc.textContent = score !== null ? `${score}` : '—';
+    row.appendChild(sc);
+
+    // button
+    const btn = document.createElement('a');
+    if (done) {
+      btn.className = 'open-btn retake-disabled';
+      btn.textContent = 'Submitted';
+    } else {
+      btn.className = 'open-btn';
+      btn.href      = act.file;
+      btn.textContent = 'Open →';
+    }
+    row.appendChild(btn);
+
+    list.appendChild(row);
+  });
+}
+
+/* ── summary overlay ── */
+function openSummary() {
+  const tbody = document.getElementById('summary-body');
+  tbody.innerHTML = '';
+
+  let totalScore = 0, totalMax = 0, count = 0;
+
+  ACTIVITIES.forEach((act, i) => {
+    const rec = getRecord(act.lock);
+    const tr  = document.createElement('tr');
+
+    if (rec) {
+      const sc   = rec.score;
+      const sClass = scoreClass(sc);
+      totalScore += sc;
+      totalMax   += 100;
+      count++;
+      tr.innerHTML = `
+        <td>${i+1}</td>
+        <td>${act.title}</td>
+        <td>${rec.name || '—'}</td>
+        <td class="s-score ${sClass}">${sc} / 100</td>
+        <td>${rec.time || '—'}</td>
+        <td><span class="s-tag ${rec.terminated ? 'term' : 'done'}">${rec.terminated ? 'Terminated' : 'Done'}</span></td>
+      `;
+    } else {
+      tr.innerHTML = `
+        <td>${i+1}</td>
+        <td>${act.title}</td>
+        <td>—</td>
+        <td class="s-score none">Not taken</td>
+        <td>—</td>
+        <td>—</td>
+      `;
+    }
+    tbody.appendChild(tr);
+  });
+
+  // totals row
+  if (count > 0) {
+    const avgClass = scoreClass(Math.round(totalScore / count));
+    const totRow = document.createElement('tr');
+    totRow.className = 'total-row';
+    totRow.innerHTML = `
+      <td colspan="3">Overall (${count} / ${ACTIVITIES.length} completed)</td>
+      <td class="s-score ${avgClass}">${totalScore} / ${totalMax}</td>
+      <td colspan="2"></td>
+    `;
+    tbody.appendChild(totRow);
+  }
+
+  if (count === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-msg">No examinations completed yet.</td></tr>`;
+  }
+
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeSummary() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+// close on backdrop click
+document.getElementById('overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeSummary();
+});
+
+renderActivities();
+</script>
+</body>
+</html>

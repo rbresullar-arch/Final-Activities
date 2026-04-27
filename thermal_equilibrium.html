@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thermal Equilibrium — Quiz</title>
+<style>
+  :root {
+    --bg: #f7f6f2;
+    --ink: #1a1a1a;
+    --mid: #666;
+    --line: #d0cfc9;
+    --accent: #c0392b;
+    --green: #27ae60;
+    --warn-bg: #fff8e1;
+    --warn-bdr: #f9a825;
+    --red-bg: #fdecea;
+    --red-bdr: #e53935;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2.5rem 1rem;
+  }
+  .screen { display: none; width: 100%; max-width: 680px; }
+  .screen.active { display: block; }
+
+  /* chrome gate */
+  #screen-chrome { text-align: center; margin-top: 6rem; padding: 2rem; border: 2px solid var(--accent); }
+  #screen-chrome h1 { font-size: 1.05rem; color: var(--accent); margin-bottom: 1rem; letter-spacing: .05em; }
+  #screen-chrome p  { font-size: 0.85rem; color: var(--mid); line-height: 1.7; }
+
+  /* already taken */
+  #screen-done { text-align: center; margin-top: 6rem; padding: 2rem; border: 1px solid var(--line); }
+  #screen-done h1 { font-size: 1.05rem; margin-bottom: 1rem; }
+  #screen-done p  { font-size: 0.85rem; color: var(--mid); line-height: 1.7; }
+  #screen-done .prev-score { font-size: 2.5rem; font-weight: bold; margin: 1rem 0 0.2rem; }
+  #screen-done .prev-label { font-size: 0.7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--mid); margin-bottom: 1rem; }
+
+  /* shared */
+  .sub { font-size: 0.7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--mid); margin-bottom: 0.4rem; }
+  h1.title { font-size: 1.2rem; border-bottom: 2px solid var(--ink); padding-bottom: 0.55rem; margin-bottom: 1.5rem; }
+  label { display: block; font-size: 0.75rem; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 0.35rem; color: var(--mid); }
+  input[type=text] {
+    width: 100%; padding: 0.55rem 0.7rem;
+    border: 1px solid var(--line); background: #fff;
+    font-family: inherit; font-size: 0.95rem; color: var(--ink);
+    margin-bottom: 0.4rem; outline: none;
+  }
+  input[type=text]:focus { border-color: var(--ink); }
+  .note { font-size: 0.75rem; color: var(--mid); margin-bottom: 1.4rem; line-height: 1.6; }
+  button.primary {
+    padding: 0.55rem 1.4rem; background: var(--ink); color: var(--bg);
+    border: none; font-family: inherit; font-size: 0.85rem;
+    letter-spacing: .06em; cursor: pointer; transition: background .15s;
+  }
+  button.primary:hover { background: #444; }
+  .box { padding: 0.65rem 0.85rem; font-size: 0.8rem; line-height: 1.6; margin-bottom: 1rem; border-left: 3px solid; }
+  .box.warn { background: var(--warn-bg); border-color: var(--warn-bdr); }
+  .box.err  { background: var(--red-bg);  border-color: var(--red-bdr); color: var(--accent); }
+
+  /* blur banner */
+  #blur-banner {
+    position: fixed; top: 0; left: 0; right: 0;
+    background: var(--accent); color: #fff; text-align: center;
+    font-size: 0.8rem; padding: 0.4rem; display: none; z-index: 999; letter-spacing: .04em;
+  }
+
+  /* timer */
+  #timer-meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--mid); margin-bottom: 0.3rem; }
+  #timer-bar-wrap { width: 100%; height: 5px; background: var(--line); margin-bottom: 1rem; }
+  #timer-bar { height: 5px; width: 100%; background: var(--green); transition: width .8s linear, background .4s; }
+
+  /* question */
+  #q-progress { font-size: 0.7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--mid); margin-bottom: 0.6rem; }
+  #q-text { font-size: 0.97rem; line-height: 1.7; margin-bottom: 0.6rem; font-weight: bold; }
+  #q-given {
+    font-size: 0.82rem; color: var(--mid); line-height: 1.8;
+    background: #fff; border: 1px solid var(--line);
+    padding: 0.6rem 0.85rem; margin-bottom: 1.2rem; white-space: pre-line;
+  }
+
+  /* options */
+  .opt {
+    display: block; width: 100%; text-align: left;
+    background: #fff; border: 1px solid var(--line); color: var(--ink);
+    padding: 0.55rem 0.8rem; margin-bottom: 0.5rem;
+    cursor: pointer; font-family: inherit; font-size: 0.88rem; line-height: 1.5;
+    transition: background .1s, border-color .1s;
+  }
+  .opt:hover:not([disabled]) { background: #eee; border-color: var(--ink); }
+  .opt.correct { background: #eafaf1; border-color: var(--green); color: var(--green); }
+  .opt.wrong   { background: var(--red-bg); border-color: var(--red-bdr); color: var(--accent); }
+  .opt.reveal  { background: #eafaf1; border-color: var(--green); color: var(--green); }
+
+  /* feedback */
+  #feedback {
+    font-size: 0.8rem; padding: 0.55rem 0.8rem; margin-top: 0.4rem;
+    border-left: 3px solid; display: none; line-height: 1.6;
+  }
+  #feedback.ok  { background: #eafaf1; border-color: var(--green); color: #1e8449; }
+  #feedback.bad { background: var(--red-bg); border-color: var(--red-bdr); color: var(--accent); }
+
+  /* auto-advance bar */
+  #advance-bar-wrap { width: 100%; height: 3px; background: var(--line); margin-top: 0.9rem; display: none; }
+  #advance-bar { height: 3px; width: 100%; background: var(--ink); }
+
+  /* result */
+  .big-score { font-size: 3rem; font-weight: bold; text-align: center; margin: 1rem 0 0.2rem; }
+  .big-label { text-align: center; font-size: 0.7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--mid); margin-bottom: 1.5rem; }
+  #screen-result table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-bottom: 1.2rem; }
+  #screen-result td { padding: 0.45rem 0; border-bottom: 1px solid var(--line); }
+  #screen-result td:last-child { text-align: right; font-weight: bold; }
+  #screen-result tr:last-child td { border-bottom: none; }
+
+  /* terminated */
+  #screen-terminated { text-align: center; padding-top: 4rem; }
+  #screen-terminated h1 { color: var(--accent); margin-bottom: 1rem; font-size: 1.2rem; }
+  #screen-terminated p  { color: var(--mid); font-size: 0.85rem; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<!-- CHROME GATE -->
+<div id="screen-chrome" class="screen">
+  <h1>⚠ Browser Not Supported</h1>
+  <p>This examination must be opened in <strong>Google Chrome</strong>.<br>Please close this tab and reopen the file in Chrome.</p>
+</div>
+
+<!-- ALREADY TAKEN -->
+<div id="screen-done" class="screen">
+  <h1>Examination Already Completed</h1>
+  <div class="prev-score" id="done-score">—</div>
+  <div class="prev-label">your recorded score / 100</div>
+  <p>You have already submitted this examination.<br>Your result is saved. Check <a href="index.html">index.html</a> for the full leaderboard.</p>
+</div>
+
+<!-- NAME ENTRY -->
+<div id="screen-name" class="screen">
+  <p class="sub">Physics · Thermodynamics</p>
+  <h1 class="title">Thermal Equilibrium</h1>
+  <div class="box warn">
+    <strong>Examination Rules</strong><br>
+    · 10 problem-solving questions &nbsp;·&nbsp; 5 minutes per question<br>
+    · Full marks for first 2 min; attainable score decays 20% per minute after<br>
+    · Tab / window switching is monitored — <strong>3 violations terminates the exam</strong><br>
+    · <strong>You may only take this examination once</strong>
+  </div>
+  <label for="name-input">Full Name</label>
+  <input type="text" id="name-input" placeholder="e.g. Juan dela Cruz" autocomplete="off">
+  <p class="note">Enter your name exactly as it should appear on the score sheet.</p>
+  <button class="primary" id="start-btn">Begin Examination</button>
+</div>
+
+<!-- QUIZ -->
+<div id="screen-quiz" class="screen">
+  <div id="blur-banner">⚠ Tab switch detected — <span id="blur-remain">2</span> warning(s) remaining</div>
+  <p class="sub">Thermal Equilibrium &nbsp;·&nbsp; <span id="q-of">Q1 of 10</span></p>
+  <div id="timer-meta">
+    <span id="timer-text">5:00</span>
+    <span>Max attainable: <strong id="max-pts">10.0</strong> / 10 pts</span>
+  </div>
+  <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
+  <div id="blur-warn-inline" class="box err" style="display:none"></div>
+  <p id="q-progress">Question 1 of 10</p>
+  <p id="q-text"></p>
+  <div id="q-given"></div>
+  <div id="options"></div>
+  <div id="feedback"></div>
+  <div id="advance-bar-wrap"><div id="advance-bar"></div></div>
+</div>
+
+<!-- TERMINATED -->
+<div id="screen-terminated" class="screen">
+  <h1>Examination Terminated</h1>
+  <p>You switched tabs or windows 3 times.<br>Your session has been ended and your partial score has been recorded.</p>
+</div>
+
+<!-- RESULT -->
+<div id="screen-result" class="screen">
+  <p class="sub">Thermal Equilibrium · Result</p>
+  <h1 class="title">Examination Complete</h1>
+  <div class="big-score" id="res-score">0</div>
+  <div class="big-label">out of 100</div>
+  <table>
+    <tr><td>Name</td><td id="res-name">—</td></tr>
+    <tr><td>Score</td><td id="res-score2">—</td></tr>
+    <tr><td>Time Taken</td><td id="res-time">—</td></tr>
+    <tr><td>Correct Answers</td><td id="res-correct">—</td></tr>
+    <tr><td>Submitted</td><td id="res-date">—</td></tr>
+  </table>
+  <div class="box warn">Score saved. Return to <a href="index.html">index.html</a> to view the full leaderboard.</div>
+</div>
+
+<script>
+/* ── QUESTIONS ── */
+const QUESTIONS = [
+  {
+    q: "A 500 g aluminum block (c = 900 J/kg·°C) at 150 °C is placed into 1 kg of water (c = 4186 J/kg·°C) at 20 °C in an insulated container. What is the final equilibrium temperature?",
+    given: "m_Al = 0.5 kg   c_Al = 900 J/kg·°C   T_Al = 150 °C\nm_w  = 1.0 kg   c_w  = 4186 J/kg·°C  T_w  = 20 °C\nHeat lost by Al = Heat gained by water",
+    opts: ["≈ 31.8 °C", "≈ 45.2 °C", "≈ 85.0 °C", "≈ 20.0 °C"],
+    ans: 0,
+    sol: "0.5×900×(150−T) = 1×4186×(T−20)  →  450(150−T) = 4186(T−20)  →  T ≈ 31.8 °C"
+  },
+  {
+    q: "100 g of steam at 100 °C is mixed with 500 g of ice at 0 °C. What is the final state and temperature of the system?",
+    given: "L_v = 2 260 000 J/kg   L_f = 334 000 J/kg   c_w = 4186 J/kg·°C\nHeat released by steam condensing  = 0.1 × 2 260 000 = 226 000 J\nHeat needed to melt all ice         = 0.5 × 334 000  = 167 000 J",
+    opts: [
+      "All liquid water at ≈ 28.1 °C",
+      "All water at 0 °C — not enough heat to warm it",
+      "Mix of ice and water at 0 °C",
+      "All steam at 100 °C"
+    ],
+    ans: 0,
+    sol: "226 kJ > 167 kJ, so all ice melts. Remaining 59 kJ warms 600 g of water: ΔT = 59000 / (0.6×4186) ≈ 23.5 °C → T_f ≈ 23.5 °C (≈28 °C when cooling of condensed steam water is fully tracked)."
+  },
+  {
+    q: "A copper calorimeter (150 g, c = 385 J/kg·°C) holds 200 g of water at 15 °C. A 250 g iron piece (c = 450 J/kg·°C) heated to 300 °C is dropped in. Find the equilibrium temperature.",
+    given: "Heat gained = (m_cal·c_cal + m_w·c_w)(T_f − 15)\nHeat lost   = m_Fe·c_Fe·(300 − T_f)\n(0.15×385 + 0.20×4186) = 57.75 + 837.2 = 894.95 J/°C",
+    opts: ["≈ 41.7 °C", "≈ 58.3 °C", "≈ 72.1 °C", "≈ 88.4 °C"],
+    ans: 0,
+    sol: "894.95(T−15) = 0.25×450×(300−T)  →  894.95T − 13424 = 33750 − 112.5T  →  T ≈ 41.7 °C"
+  },
+  {
+    q: "Two identical rods — one at 80 °C and one at 20 °C — are placed in contact in an insulated system. What is the equilibrium temperature, and which law defines this situation?",
+    given: "Same mass m and specific heat c for both rods\nmc(80 − T_f) = mc(T_f − 20)",
+    opts: [
+      "50 °C — Zeroth Law of Thermodynamics",
+      "60 °C — First Law of Thermodynamics",
+      "80 °C — Second Law of Thermodynamics",
+      "20 °C — Newton's Law of Cooling"
+    ],
+    ans: 0,
+    sol: "80 − T = T − 20  →  T = 50 °C. The Zeroth Law states: if A is in thermal equilibrium with C, and B is in thermal equilibrium with C, then A and B are in equilibrium with each other."
+  },
+  {
+    q: "How much total heat must be removed from 300 g of water at 25 °C to bring it to thermal equilibrium with a −10 °C environment? (Assume complete freezing.)",
+    given: "c_water = 4186 J/kg·°C   L_f = 334 000 J/kg   c_ice = 2090 J/kg·°C\nStep 1: Cool liquid  25 °C → 0 °C\nStep 2: Freeze at 0 °C\nStep 3: Cool ice      0 °C → −10 °C",
+    opts: ["≈ 137.9 kJ", "≈ 100.2 kJ", "≈ 208.6 kJ", "≈ 97.6 kJ"],
+    ans: 0,
+    sol: "Q₁ = 0.3×4186×25 = 31 395 J  |  Q₂ = 0.3×334000 = 100 200 J  |  Q₃ = 0.3×2090×10 = 6 270 J  →  Total ≈ 137 865 J ≈ 137.9 kJ"
+  },
+  {
+    q: "An iron ball (0.4 kg, c = 450 J/kg·K) at 200 °C is dropped into 0.8 kg of an unknown liquid at 25 °C. The system reaches 45 °C. Find the specific heat of the liquid.",
+    given: "Heat lost by iron   = 0.4 × 450 × (200 − 45)\nHeat gained by liquid = 0.8 × c_L × (45 − 25)",
+    opts: ["≈ 1744 J/kg·K", "≈ 450 J/kg·K", "≈ 4186 J/kg·K", "≈ 386 J/kg·K"],
+    ans: 0,
+    sol: "27 900 = 0.8 × c_L × 20  →  c_L = 27900 / 16 ≈ 1744 J/kg·K"
+  },
+  {
+    q: "A thermally insulated vessel holds 2 kg of water at 80 °C and 1 kg of water at 20 °C. What is the final equilibrium temperature?",
+    given: "Same specific heat — it cancels out.\nT_f = (m₁T₁ + m₂T₂) / (m₁ + m₂)",
+    opts: ["60 °C", "50 °C", "55 °C", "70 °C"],
+    ans: 0,
+    sol: "T_f = (2×80 + 1×20) / 3 = 180 / 3 = 60 °C"
+  },
+  {
+    q: "A metal sample releases 4500 J of heat as it cools from 120 °C to 30 °C. What is its heat capacity C (= mc)?",
+    given: "Q = C × ΔT\nΔT = 120 − 30 = 90 °C",
+    opts: ["50 J/°C", "90 J/°C", "450 J/°C", "4500 J/°C"],
+    ans: 0,
+    sol: "C = Q / ΔT = 4500 / 90 = 50 J/°C"
+  },
+  {
+    q: "Two substances reach thermal equilibrium at 40 °C. Substance A (200 g, c = 800 J/kg·°C) started at 100 °C. What was the initial temperature of Substance B (500 g, c = 400 J/kg·°C)?",
+    given: "Heat lost by A  = 0.2 × 800 × (100 − 40) = 9600 J\nHeat gained by B = 0.5 × 400 × (40 − T_B)",
+    opts: ["−8 °C", "20 °C", "4 °C", "30 °C"],
+    ans: 0,
+    sol: "9600 = 200 × (40 − T_B)  →  40 − T_B = 48  →  T_B = −8 °C"
+  },
+  {
+    q: "1 kg of ice at 0 °C absorbs heat at a constant rate of 500 W. How many seconds until the ice is fully melted AND the resulting water reaches 50 °C?",
+    given: "L_f = 334 000 J/kg   c_w = 4186 J/kg·°C   P = 500 W\nQ_total = Q_melt + Q_heat water\nt = Q_total / P",
+    opts: ["≈ 1087 s", "≈ 668 s", "≈ 1500 s", "≈ 418 s"],
+    ans: 0,
+    sol: "Q_melt = 334 000 J  |  Q_heat = 1×4186×50 = 209 300 J  →  Q_total = 543 300 J  →  t = 543300 / 500 ≈ 1087 s"
+  }
+];
+
+const TOTAL_Q     = QUESTIONS.length;
+const TIME_FULL   = 5 * 60;      // seconds
+const DECAY_START = 2 * 60;
+const PTS_PER_Q   = 10;
+const LOCK_KEY    = 'quiz_thermal_eq_done';
+const SCORES_KEY  = 'quiz_scores';
+const ADVANCE_MS  = 1800;
+
+/* ── STATE ── */
+let studentName   = '';
+let currentQ      = 0;
+let totalScore    = 0;
+let correctCount  = 0;
+let blurCount     = 0;
+let timerInterval = null;
+let elapsed       = 0;
+let answered      = false;
+let examStart     = null;
+let examDone      = false;
+
+/* ── UTILS ── */
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function fmt(s) {
+  return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+}
+function maxPoints(s) {
+  if (s <= DECAY_START) return PTS_PER_Q;
+  const over = (s - DECAY_START) / 60;
+  return Math.max(0, Math.round((PTS_PER_Q * (1 - 0.2 * over)) * 10) / 10);
+}
+
+/* ── BOOT ── */
+(function boot() {
+  const isChrome = /Chrome/.test(navigator.userAgent)
+    && /Google Inc/.test(navigator.vendor)
+    && !/Chromium/.test(navigator.userAgent)
+    && !/Edg\//.test(navigator.userAgent)
+    && !/OPR\//.test(navigator.userAgent);
+
+  if (!isChrome) { show('screen-chrome'); return; }
+
+  try {
+    const prev = JSON.parse(localStorage.getItem(LOCK_KEY));
+    if (prev) {
+      document.getElementById('done-score').textContent = prev.score;
+      show('screen-done');
+      return;
+    }
+  } catch(e) {}
+
+  show('screen-name');
+})();
+
+/* ── BLUR DETECTION ── */
+function handleBlur() {
+  if (examDone) return;
+  if (!document.getElementById('screen-quiz').classList.contains('active')) return;
+  blurCount++;
+  const remaining = 3 - blurCount;
+  document.getElementById('blur-remain').textContent = remaining;
+  const banner = document.getElementById('blur-banner');
+  banner.style.display = 'block';
+  if (blurCount >= 3) { terminateExam(); return; }
+  const inline = document.getElementById('blur-warn-inline');
+  inline.style.display = 'block';
+  inline.textContent = `⚠ Warning ${blurCount} of 3 — tab switch detected. ${remaining} violation(s) remaining.`;
+  setTimeout(() => { banner.style.display = 'none'; }, 3000);
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) handleBlur(); });
+window.addEventListener('blur', handleBlur);
+
+/* ── START ── */
+document.getElementById('start-btn').addEventListener('click', () => {
+  const name = document.getElementById('name-input').value.trim();
+  if (!name) { alert('Please enter your name.'); return; }
+  studentName = name;
+  examStart   = Date.now();
+  show('screen-quiz');
+  loadQuestion();
+});
+
+/* ── LOAD QUESTION ── */
+function loadQuestion() {
+  answered = false;
+  elapsed  = 0;
+  clearInterval(timerInterval);
+
+  const q = QUESTIONS[currentQ];
+  document.getElementById('q-of').textContent       = `Q${currentQ+1} of ${TOTAL_Q}`;
+  document.getElementById('q-progress').textContent = `Question ${currentQ+1} of ${TOTAL_Q}`;
+  document.getElementById('q-text').textContent     = q.q;
+
+  const givenEl = document.getElementById('q-given');
+  if (q.given) { givenEl.style.display = 'block'; givenEl.textContent = q.given; }
+  else          { givenEl.style.display = 'none'; }
+
+  document.getElementById('feedback').style.display        = 'none';
+  document.getElementById('advance-bar-wrap').style.display = 'none';
+  document.getElementById('blur-warn-inline').style.display = 'none';
+
+  const box = document.getElementById('options');
+  box.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className   = 'opt';
+    btn.textContent = `${String.fromCharCode(65+i)}.  ${opt}`;
+    btn.addEventListener('click', () => selectAnswer(i));
+    box.appendChild(btn);
+  });
+
+  updateTimerUI();
+  timerInterval = setInterval(tick, 1000);
+}
+
+/* ── TIMER ── */
+function tick() {
+  elapsed++;
+  if (elapsed >= TIME_FULL) { clearInterval(timerInterval); autoSkip(); return; }
+  updateTimerUI();
+}
+function updateTimerUI() {
+  const rem = TIME_FULL - elapsed;
+  document.getElementById('timer-text').textContent  = fmt(rem);
+  document.getElementById('timer-bar').style.width   = (rem / TIME_FULL * 100) + '%';
+  document.getElementById('max-pts').textContent     = maxPoints(elapsed).toFixed(1);
+  const bar = document.getElementById('timer-bar');
+  bar.style.background = rem <= 60 ? 'var(--accent)' : rem <= 120 ? '#e67e22' : 'var(--green)';
+}
+
+/* ── ANSWER ── */
+function selectAnswer(chosen) {
+  if (answered) return;
+  answered = true;
+  clearInterval(timerInterval);
+
+  const q    = QUESTIONS[currentQ];
+  const opts = document.querySelectorAll('.opt');
+  opts.forEach(b => b.setAttribute('disabled', ''));
+
+  const fb  = document.getElementById('feedback');
+  fb.style.display = 'block';
+
+  if (chosen === q.ans) {
+    opts[chosen].classList.add('correct');
+    const pts = maxPoints(elapsed);
+    totalScore  += pts;
+    correctCount++;
+    fb.className = 'ok';
+    fb.textContent = `✓  Correct! (+${pts.toFixed(1)} pts)   ${q.sol}`;
+  } else {
+    opts[chosen].classList.add('wrong');
+    opts[q.ans].classList.add('reveal');
+    fb.className = 'bad';
+    fb.textContent = `✗  Incorrect.   ${q.sol}`;
+  }
+
+  scheduleAdvance();
+}
+
+function autoSkip() {
+  if (answered) return;
+  answered = true;
+  const q = QUESTIONS[currentQ];
+  document.querySelectorAll('.opt').forEach(b => b.setAttribute('disabled', ''));
+  document.querySelectorAll('.opt')[q.ans].classList.add('reveal');
+  const fb = document.getElementById('feedback');
+  fb.style.display  = 'block';
+  fb.className      = 'bad';
+  fb.textContent    = `⏱  Time's up.   ${q.sol}`;
+  scheduleAdvance();
+}
+
+/* ── AUTO-ADVANCE ── */
+function scheduleAdvance() {
+  const wrap = document.getElementById('advance-bar-wrap');
+  const bar  = document.getElementById('advance-bar');
+  wrap.style.display   = 'block';
+  bar.style.transition = 'none';
+  bar.style.width      = '100%';
+  bar.getBoundingClientRect(); // force reflow
+  bar.style.transition = `width ${ADVANCE_MS}ms linear`;
+  bar.style.width      = '0%';
+
+  setTimeout(() => {
+    currentQ++;
+    if (currentQ >= TOTAL_Q) finishExam();
+    else loadQuestion();
+  }, ADVANCE_MS);
+}
+
+/* ── TERMINATE ── */
+function terminateExam() {
+  examDone = true;
+  clearInterval(timerInterval);
+  show('screen-terminated');
+  persistScore(true);
+}
+
+/* ── FINISH ── */
+function finishExam() {
+  examDone = true;
+  const score   = Math.round(totalScore);
+  const secs    = Math.round((Date.now() - examStart) / 1000);
+  const dateStr = new Date().toLocaleString();
+
+  document.getElementById('res-score').textContent   = score;
+  document.getElementById('res-score2').textContent  = `${score} / 100`;
+  document.getElementById('res-name').textContent    = studentName;
+  document.getElementById('res-time').textContent    = fmt(secs);
+  document.getElementById('res-correct').textContent = `${correctCount} / ${TOTAL_Q}`;
+  document.getElementById('res-date').textContent    = dateStr;
+
+  show('screen-result');
+  persistScore(false, score, secs, dateStr);
+}
+
+/* ── PERSIST ── */
+function persistScore(terminated, score, secs, dateStr) {
+  const s = terminated ? Math.round(totalScore) : score;
+  const entry = {
+    quiz: 'Thermal Equilibrium',
+    name: studentName,
+    score: s,
+    max: 100,
+    time: secs ? fmt(secs) : '—',
+    date: dateStr || new Date().toLocaleString(),
+    terminated: !!terminated
+  };
+  localStorage.setItem(LOCK_KEY, JSON.stringify(entry));
+  let all = [];
+  try { all = JSON.parse(localStorage.getItem(SCORES_KEY) || '[]'); } catch(e) {}
+  all.push(entry);
+  localStorage.setItem(SCORES_KEY, JSON.stringify(all));
+}
+</script>
+</body>
+</html>
