@@ -277,11 +277,17 @@ function maxPoints(s) {
 }
 
 (function boot() {
-  const isChrome = /Chrome/.test(navigator.userAgent)
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  const isChrome = isIOS || (
+    /Chrome/.test(navigator.userAgent)
     && /Google Inc/.test(navigator.vendor)
     && !/Chromium/.test(navigator.userAgent)
     && !/Edg\//.test(navigator.userAgent)
-    && !/OPR\//.test(navigator.userAgent);
+    && !/OPR\//.test(navigator.userAgent)
+  );
+
   if (!isChrome) { show('screen-chrome'); return; }
   try {
     const prev = JSON.parse(localStorage.getItem(LOCK_KEY));
